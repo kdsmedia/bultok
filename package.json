@@ -1,0 +1,19 @@
+{
+  "name": "bultok",
+  "version": "1.0.0",
+  "description": "BULTOK Game Application",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "portfinder": "^1.0.32",
+    "ws": "^8.13.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "author": "Sidhanie",
+  "license": "MIT"
+}
