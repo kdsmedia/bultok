@@ -6,7 +6,6 @@ const path = require('path');
 
 // Create Express app and HTTP server
 const app = express();
-const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 // Data sesi pengguna
