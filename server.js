@@ -6,6 +6,7 @@ const path = require('path');
 
 // Create Express app and HTTP server
 const app = express();
+const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 // Data sesi pengguna
@@ -21,6 +22,10 @@ const profilePictures = [
     'public/images/image3.jpg', // Gambar untuk 3 likes
     // Tambahkan lebih banyak gambar sesuai kebutuhan
 ];
+
+// Variabel untuk menentukan apakah suara sedang diputar
+let isPlaying = false;
+let currentSoundTimeout = null; // Variable to hold the current sound timeout
 
 // Fungsi untuk mengupdate jumlah likes per pengguna
 function updateUserLikes(username, likeCount) {
@@ -72,10 +77,34 @@ let tiktokLiveConnection;
 
 // Function to play sound on client
 function playSound(ws, soundPath) {
-    ws.send(JSON.stringify({
-        type: 'play-sound',
-        sound: soundPath
-    }));
+    if (!isPlaying) {
+        isPlaying = true;
+        ws.send(JSON.stringify({
+            type: 'play-sound',
+            sound: soundPath
+        }));
+
+        // Simulasi durasi suara (misalnya, 5 detik)
+        currentSoundTimeout = setTimeout(() => {
+            isPlaying = false;
+            currentSoundTimeout = null;
+        }, 5000); // Sesuaikan dengan durasi suara sesungguhnya
+    } else {
+        console.log('A sound is already playing, skipping this sound.');
+    }
+}
+
+// Function to stop playing sound
+function stopPlayingSound(ws) {
+    if (isPlaying) {
+        clearTimeout(currentSoundTimeout);
+        isPlaying = false;
+        currentSoundTimeout = null;
+        ws.send(JSON.stringify({
+            type: 'stop-sound'
+        }));
+        console.log('Sound playback stopped.');
+    }
 }
 
 // Function to display floating photo
@@ -139,6 +168,51 @@ function handleEnvelope(ws, data) {
     playSound(ws, 'sounds/anjay.mp3');
 }
 
+// Function to handle chat comments
+function handleChat(ws, data) {
+    console.log(`${data.uniqueId} (userId:${data.userId}) writes: ${data.comment}`);
+    ws.send(JSON.stringify({
+        type: 'chat',
+        userName: data.uniqueId,
+        comment: data.comment
+    }));
+
+    // Pemetaan komentar ke file suara
+    const soundMapping = {
+        '1': 'sounds/1.mp3',
+        '2': 'sounds/2.mp3',
+        '3': 'sounds/3.mp3',
+        '4': 'sounds/4.mp3',
+        '5': 'sounds/5.mp3',
+        '6': 'sounds/6.mp3',
+        '7': 'sounds/7.mp3',
+        '8': 'sounds/8.mp3',
+        '9': 'sounds/9.mp3',
+        '10': 'sounds/10.mp3',
+        '11': 'sounds/11.mp3',
+        '12': 'sounds/12.mp3',
+        '13': 'sounds/13.mp3',
+        '14': 'sounds/14.mp3',
+        '15': 'sounds/15.mp3',
+        '16': 'sounds/16.mp3',
+        '17': 'sounds/17.mp3',
+        '18': 'sounds/18.mp3',
+        '19': 'sounds/19.mp3',
+        '20': 'sounds/20.mp3'
+    };
+
+    // Cek apakah komentar sesuai dengan salah satu kunci di soundMapping
+    const soundFile = soundMapping[data.comment.trim()];
+    if (soundFile) {
+        playSound(ws, soundFile);
+    }
+
+    // Cek apakah komentar adalah "ganti"
+    if (data.comment.trim().toLowerCase() === 'ganti') {
+        stopPlayingSound(ws);
+    }
+}
+
 // WebSocket connection handling
 wss.on('connection', (ws) => {
     console.log('WebSocket connection established.');
@@ -187,41 +261,26 @@ wss.on('connection', (ws) => {
 
             tiktokLiveConnection.on('envelope', (data) => handleEnvelope(ws, data));
 
-            tiktokLiveConnection.on('chat', (data) => {
-                console.log(`${data.uniqueId} (userId:${data.userId}) writes: ${data.comment}`);
-                ws.send(JSON.stringify({
-                    type: 'chat',
-                    userName: data.uniqueId,
-                    comment: data.comment
-                }));
-            });
+            tiktokLiveConnection.on('chat', (data) => handleChat(ws, data));
 
             tiktokLiveConnection.on('websocketConnected', (websocketClient) => {
                 console.log("Websocket:", websocketClient.connection);
             });
 
             tiktokLiveConnection.on('roomUser', (data) => {
-                console.log(`Viewer Count: ${data.viewerCount}`);
-                ws.send(JSON.stringify({
-                    type: 'roomUser',
-                    viewerCount: data.viewerCount
-                }));
-            });
-
-            ws.on('close', () => {
-                console.log('WebSocket connection closed.');
-                if (tiktokLiveConnection) {
-                    tiktokLiveConnection.disconnect();
-                }
+                console.log(`Viewer Count: ${data}`);
             });
         }
     });
 
-    ws.send(JSON.stringify({ type: 'connected' }));
+    // Handle WebSocket closure
+    ws.on('close', () => {
+        console.log('WebSocket connection closed.');
+    });
 });
 
-// Automatically find an available port and start the server
-const port = 8084;
-server.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+// Start the server on port 3000
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
