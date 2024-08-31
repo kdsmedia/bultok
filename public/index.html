@@ -6,20 +6,40 @@
     <title>BulTok TikTok Live Stream Interactive | By Sidhanie</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-        }
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-image: url('bg/bg0.jpeg'); /* Default background image */
+    background-size: cover; /* Ensure the image covers the entire viewport */
+    background-position: center; /* Center the image */
+    background-repeat: no-repeat; /* Prevent the image from repeating */
+    background-attachment: fixed; /* Make background image fixed */
+    height: 100vh; /* Ensure body takes up the full viewport height */
+    width: 100vw; /* Ensure body takes up the full viewport width */
+}
+
+/* Adjust for smaller devices */
+@media (max-width: 768px) {
+    body {
+        background-size: cover; /* Ensure background covers the viewport */
+        background-attachment: scroll; /* Disable fixed background on small screens */
+    }
+}
+
+/* Adjust for very small devices, e.g., phones in portrait mode */
+@media (max-width: 480px) {
+    body {
+        background-size: cover; /* Ensure background covers the viewport */
+        background-attachment: scroll; /* Disable fixed background */
+    }
+}
 
         #settingsButton {
             position: fixed;
             bottom: 20px;
             right: 20px;
-            background-color: #333;
+            background-color: none;
             color: #fff;
             border: none;
             border-radius: 50%;
@@ -43,6 +63,9 @@
             padding: 20px;
             box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
             z-index: 1000;
+            border-color: #007bff;
+            border-size: 15px;
+            border-radius: 5%;
         }
 
         #settingsPopup input, #settingsPopup select {
@@ -50,6 +73,9 @@
             padding: 8px;
             margin-bottom: 10px;
             box-sizing: border-box;
+            border-color: #007bff;
+            border-size: 15px;
+            border-radius: 5%;
         }
 
         #settingsPopup button {
@@ -57,7 +83,9 @@
             padding: 10px;
             background-color: #007bff;
             color: #fff;
-            border: none;
+            border-color: #007bff;
+            border-size: 15px;
+            border-radius: 5%;
             cursor: pointer;
         }
 
@@ -115,7 +143,7 @@
         <h2>Settings</h2>
         <input type="text" id="usernameInput" placeholder="Enter TikTok username" />
         
-        <label for="backgroundSelect">Pilih Background:</label>
+        <center><label for="backgroundSelect">Pilih Background:</label></center>
         <select id="backgroundSelect">
             <option value="bg/bg0.jpeg">BG 0</option>
             <option value="bg/bg1.jpeg">BG 1</option>
@@ -130,7 +158,7 @@
             <option value="bg/bg10.jpg">BG 10</option>
         </select>
         
-        <label for="enableBackground">Aktifkan Background</label>
+        <center><label for="enableBackground">Aktifkan Background</label></center>
         <input type="checkbox" id="enableBackground" />
 
         <button id="connectButton">Connect</button>
@@ -138,7 +166,9 @@
     </div>
 
     <script>
-        const ws = new WebSocket('ws://localhost:8084');
+        const ws = new WebSocket('ws://localhost:3000'); // Update to port 3000
+        let isPlaying = false;  // Track if sound is playing
+        let currentAudio = null;  // Track the current audio element
 
         ws.onopen = () => {
             console.log('WebSocket connection established.');
@@ -226,8 +256,28 @@
         }
 
         function playSound(soundPath) {
-            const audio = new Audio(soundPath);
-            audio.play();
+            if (isPlaying) {
+                currentAudio.pause();  // Stop the current audio
+                currentAudio = null;   // Clear the current audio element
+                isPlaying = false;    // Update status
+            }
+
+            currentAudio = new Audio(soundPath);
+            currentAudio.play();
+            isPlaying = true;
+
+            currentAudio.onended = () => {
+                isPlaying = false;
+                currentAudio = null;
+            };
+        }
+
+        function stopPlayingSound() {
+            if (isPlaying && currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+                isPlaying = false;
+            }
         }
 
         document.getElementById('settingsButton').addEventListener('click', () => {
