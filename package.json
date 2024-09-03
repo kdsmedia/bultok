@@ -1,20 +1,20 @@
 {
   "name": "bultok",
   "version": "1.0.0",
-  "description": "BULTOK Game Application",
-  "main": "server.js",
+  "description": "An Express.js application that uses WebSockets and the TikTok Live Connector for real-time TikTok live stream interactions.",
+  "main": "index.html",
   "scripts": {
     "start": "node server.js"
   },
+  "engines": {
+    "node": ">=14.x"
+  },
   "dependencies": {
     "express": "^4.18.2",
-    "portfinder": "^1.0.32",
     "ws": "^8.13.0",
-    "tiktok-live-connector": "^1.0.0"
-  },
-  "engines": {
-    "node": ">=14.0.0"
+    "tiktok-live-connector": "^1.1.5",
+    "path": "^0.12.7"
   },
   "author": "Sidhanie",
-  "license": "MIT"
+  "license": "ISC"
 }
