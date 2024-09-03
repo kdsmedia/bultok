@@ -183,7 +183,7 @@ function handleChat(ws, data) {
         '2': 'sounds/2.mp3',
         '3': 'sounds/3.mp3',
         '4': 'sounds/4.mp3',
-        '5': 'sounds/5.mp3',
+        '5': 'sounds/ahh.mp3',
         '6': 'sounds/6.mp3',
         '7': 'sounds/7.mp3',
         '8': 'sounds/8.mp3',
@@ -198,7 +198,10 @@ function handleChat(ws, data) {
         '17': 'sounds/17.mp3',
         '18': 'sounds/18.mp3',
         '19': 'sounds/19.mp3',
-        '20': 'sounds/20.mp3'
+        '20': 'sounds/20.mp3',
+        'm': 'sounds/1.mp3',
+        'assalamualaikum': 'sounds/salam.mp3',
+        'halo': 'sounds/hallo.mp3'
     };
 
     // Cek apakah komentar sesuai dengan salah satu kunci di soundMapping
