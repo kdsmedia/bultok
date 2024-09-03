@@ -118,15 +118,24 @@
         }
 
         .big-photo {
-            width: 300px;
-            height: 300px;
-            display: none;
-            border: none;
-        }
+    width: 300px;
+    height: 300px;
+    display: none;
+    border-radius: 50%; /* Membuat elemen menjadi bulat */
+    background: linear-gradient(white, white) padding-box, 
+                linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet) border-box;
+    padding: 15px; /* Ketebalan border */
+}
+
+
+
 
         .floating-photo {
-            border: none;
-        }
+    border: 2px solid limegreen; /* Border hijau menyala */
+    border-radius: 50%;          /* Membuat elemen menjadi bulat */
+    box-shadow: 0 0 10px limegreen; /* (Opsional) Menambahkan efek cahaya hijau */
+}
+
 
         .big-photo.show {
             display: block;
