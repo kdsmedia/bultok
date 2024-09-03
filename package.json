@@ -2,7 +2,7 @@
   "name": "bultok",
   "version": "1.0.0",
   "description": "An Express.js application that uses WebSockets and the TikTok Live Connector for real-time TikTok live stream interactions.",
-  "main": "index.html",
+  "main": "public",
   "scripts": {
     "start": "node server.js"
   },
