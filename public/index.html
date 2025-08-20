@@ -5,338 +5,234 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BulTok TikTok Live Stream Interactive | By Sidhanie</title>
     <style>
-        /* --- Gaya Dasar & Latar Belakang --- */
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background-image: url('bg/bg0.jpeg');
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-image: url('bg/bg0.jpeg'); /* Default background image */
+    background-size: cover; /* Ensure the image covers the entire viewport */
+    background-position: center; /* Center the image */
+    background-repeat: no-repeat; /* Prevent the image from repeating */
+    background-attachment: fixed; /* Make background image fixed */
+    height: 100vh; /* Ensure body takes up the full viewport height */
+    width: 100vw; /* Ensure body takes up the full viewport width */
+}
+
+/* Adjust for smaller devices */
+@media (max-width: 768px) {
+    body {
+        background-size: cover; /* Ensure background covers the viewport */
+        background-attachment: scroll; /* Disable fixed background on small screens */
+    }
+}
+
+/* Adjust for very small devices, e.g., phones in portrait mode */
+@media (max-width: 480px) {
+    body {
+        background-size: cover; /* Ensure background covers the viewport */
+        background-attachment: scroll; /* Disable fixed background */
+    }
+}
+
+        #settingsButton {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: none;
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 24px;
+            text-align: center;
+            line-height: 50px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+
+        #settingsPopup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            border: 1px solid #ccc;
+            padding: 20px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            border-color: #007bff;
+            border-size: 15px;
+            border-radius: 5%;
+        }
+
+        #settingsPopup input, #settingsPopup select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+            border-color: #007bff;
+            border-size: 15px;
+            border-radius: 5%;
+        }
+
+        #settingsPopup button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: #fff;
+            border-color: #007bff;
+            border-size: 15px;
+            border-radius: 5%;
+            cursor: pointer;
+        }
+
+        #settingsPopup button:hover {
+            background-color: #0056b3;
+        }
+
+        #overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        .floating-photo, .big-photo {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
             background-size: cover;
             background-position: center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-            height: 100vh;
-            width: 100vw;
-            color: white;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+            z-index: 1000;
+            transition: transform 5s ease-in-out;
         }
 
-        /* --- FITUR BARU: Papan Peringkat --- */
-        #leaderboard {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            background-color: rgba(0, 0, 0, 0.5);
-            border-radius: 10px;
-            padding: 10px;
-            width: 250px;
-            z-index: 900;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            transition: all 0.3s ease;
-        }
-        #leaderboard h3 {
-            margin: 0 0 10px 0;
-            text-align: center;
-            font-size: 16px;
-            color: #ffc107;
-        }
-        .leaderboard-entry {
-            display: flex;
-            align-items: center;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-        .leaderboard-entry img {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            margin-right: 10px;
-            border: 1px solid #fff;
-        }
-        .leaderboard-entry .name {
-            flex-grow: 1;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .leaderboard-entry .score {
-            font-weight: bold;
-            color: #ffeb3b;
-        }
+        .big-photo {
+    width: 300px;
+    height: 300px;
+    display: none;
+    border-radius: 50%; /* Membuat elemen menjadi bulat */
+    background: linear-gradient(white, white) padding-box, 
+                linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet) border-box;
+    padding: 15px; /* Ketebalan border */
+}
 
-        /* --- FITUR BARU: Tarik Tambang --- */
-        #tug-of-war {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 400px;
-            background-color: rgba(0, 0, 0, 0.6);
-            border-radius: 15px;
-            padding: 8px;
-            z-index: 900;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-        .tow-bar-container {
-            width: 100%;
-            height: 20px;
-            background-color: #e91e63; /* Warna Tim Gift (Mawar) */
-            border-radius: 10px;
-            position: relative;
-            overflow: hidden;
-        }
-        .tow-bar-fill {
-            position: absolute;
-            left: 0;
-            top: 0;
-            height: 100%;
-            background-color: #2196f3; /* Warna Tim Like */
-            border-radius: 10px 0 0 10px;
-            transition: width 0.5s ease-in-out;
-        }
-        .tow-scores {
-            display: flex;
-            justify-content: space-between;
-            padding: 5px 10px 0 10px;
-            font-size: 14px;
-            font-weight: bold;
-        }
 
-        /* --- FITUR BARU: Efek Layar Penuh (Gift Mahal) & Pemenang --- */
-        #fullscreen-overlay, #winner-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            z-index: 10000;
-            display: none; /* Sembunyikan secara default */
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            text-align: center;
-        }
-        #fullscreen-effect-image {
-            max-width: 80%;
-            max-height: 70%;
-        }
-        #fullscreen-user-info {
-            margin-top: 20px;
-            font-size: 24px;
-            font-weight: bold;
-        }
-        #winner-text {
-            font-size: 48px;
-            font-weight: bold;
-            color: #ffc107;
-            text-shadow: 2px 2px 8px #000;
-        }
 
-        /* --- Gaya Fitur Lama (Tidak Diubah) --- */
-        #settingsButton { position: fixed; bottom: 20px; right: 20px; background-color: transparent; color: #fff; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 24px; text-align: center; line-height: 50px; cursor: pointer; z-index: 1000; text-shadow: 0 0 5px black; }
-        #settingsPopup { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #fff; border: 2px solid #007bff; padding: 20px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); z-index: 1001; border-radius: 10px; width: 90%; max-width: 300px; color: #333; }
-        #settingsPopup input, #settingsPopup select, #settingsPopup button { width: 100%; padding: 10px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; }
-        #settingsPopup button { background-color: #007bff; color: #fff; border: none; cursor: pointer; }
-        #settingsPopup button:hover { background-color: #0056b3; }
-        #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; }
-        .floating-photo { position: absolute; width: 80px; height: 80px; border-radius: 50%; background-size: cover; background-position: center; box-shadow: 0 0 10px limegreen; pointer-events: none; z-index: 1000; transition: transform 5s ease-in-out, opacity 1s ease-in-out; border: 2px solid limegreen; }
-        .big-photo { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: 300px; height: 300px; border-radius: 50%; background-size: cover; background-position: center; padding: 15px; background-clip: content-box; border: 15px solid transparent; border-image: linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet) 1; z-index: 9999; opacity: 0; transition: transform 0.5s ease-out, opacity 0.5s ease-out; }
-        .big-photo.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 
-        /* --- PERBAIKAN: Aturan CSS Responsif --- */
-        @media (max-width: 768px) {
-            #leaderboard {
-                width: 200px; /* Perkecil papan peringkat */
-                left: 10px;
-                top: 10px;
-            }
-            #tug-of-war {
-                width: calc(100% - 230px); /* Isi sisa ruang di sebelah papan peringkat */
-                max-width: 400px;
-                left: auto; /* Hapus posisi kiri */
-                right: 10px; /* Posisikan di kanan */
-                transform: none; /* Hapus transform */
-            }
-            .tow-scores span:nth-child(2) {
-                display: none; /* Sembunyikan teks "Like vs Gift" agar tidak sempit */
-            }
-        }
+        
 
-        @media (max-width: 600px) {
-            /* Untuk layar ponsel, susun elemen secara vertikal */
-            #leaderboard, #tug-of-war {
-                position: relative; /* Ubah posisi agar bisa disusun */
-                width: 95%;
-                max-width: 400px;
-                left: 50%;
-                transform: translateX(-50%);
-                top: 10px;
-                margin: 0 auto 10px auto; /* Beri jarak antar elemen */
-            }
-            #tug-of-war {
-                top: 0; /* Reset posisi atas */
-            }
-            #winner-text {
-                font-size: 32px;
-            }
-            #fullscreen-user-info {
-                font-size: 20px;
-            }
+
+        .big-photo.show {
+            display: block;
         }
     </style>
 </head>
 <body>
-    <!-- FITUR BARU: Elemen Papan Peringkat -->
-    <div id="leaderboard">
-        <h3>🏆 Top Gifters 🏆</h3>
-        <div id="leaderboard-entries"></div>
-    </div>
-
-    <!-- FITUR BARU: Elemen Tarik Tambang -->
-    <div id="tug-of-war">
-        <div class="tow-bar-container">
-            <div class="tow-bar-fill" id="tow-bar-fill"></div>
-        </div>
-        <div class="tow-scores">
-            <span id="like-score">❤️ 0</span>
-            <span>Like vs Gift</span>
-            <span id="gift-score">🌹 0</span>
-        </div>
-    </div>
-
-    <!-- FITUR BARU: Elemen Overlay untuk Efek & Pemenang -->
-    <div id="fullscreen-overlay">
-        <img id="fullscreen-effect-image" src="" alt="Efek Gift"/>
-        <div id="fullscreen-user-info"></div>
-    </div>
-    <div id="winner-overlay">
-        <div id="winner-text"></div>
-    </div>
-
-    <!-- Elemen Fitur Lama (Tidak Diubah) -->
+    <!-- Settings Button -->
     <button id="settingsButton">&#9881;</button>
+
+    <!-- Settings Popup -->
     <div id="overlay"></div>
     <div id="settingsPopup">
         <h2>Settings</h2>
         <input type="text" id="usernameInput" placeholder="Enter TikTok username" />
-        <label for="backgroundSelect">Pilih Background:</label>
+        
+        <center><label for="backgroundSelect">Pilih Background:</label></center>
         <select id="backgroundSelect">
-            <option value="bg/bg0.jpeg">BG 0</option><option value="bg/bg1.jpeg">BG 1</option><option value="bg/bg2.png">BG 2</option><option value="bg/bg3.jpg">BG 3</option><option value="bg/bg4.jpeg">BG 4</option><option value="bg/bg5.jpg">BG 5</option><option value="bg/bg6.jpg">BG 6</option><option value="bg/bg7.jpg">BG 7</option><option value="bg/bg8.jpg">BG 8</option><option value="bg/bg9.jpg">BG 9</option><option value="bg/bg10.jpg">BG 10</option>
+            <option value="bg/bg0.jpeg">BG 0</option>
+            <option value="bg/bg1.jpeg">BG 1</option>
+            <option value="bg/bg2.png">BG 2</option>
+            <option value="bg/bg3.jpg">BG 3</option>
+            <option value="bg/bg4.jpeg">BG 4</option>
+            <option value="bg/bg5.jpg">BG 5</option>
+            <option value="bg/bg6.jpg">BG 6</option>
+            <option value="bg/bg7.jpg">BG 7</option>
+            <option value="bg/bg8.jpg">BG 8</option>
+            <option value="bg/bg9.jpg">BG 9</option>
+            <option value="bg/bg10.jpg">BG 10</option>
         </select>
-        <label><input type="checkbox" id="enableBackground" checked/> Aktifkan Background</label>
+        
+        <center><label for="enableBackground">Aktifkan Background</label></center>
+        <input type="checkbox" id="enableBackground" />
+
         <button id="connectButton">Connect</button>
         <button id="closeButton">Close</button>
     </div>
 
     <script>
-        const ws = new WebSocket(`ws://${window.location.host}`);
-        let currentAudio = null;
+        const ws = new WebSocket('ws://localhost:3000'); // Update to port 3000
+        let isPlaying = false;  // Track if sound is playing
+        let currentAudio = null;  // Track the current audio element
 
-        // --- Elemen Cache untuk Fitur Baru ---
-        const leaderboardEntriesDiv = document.getElementById('leaderboard-entries');
-        const towBarFill = document.getElementById('tow-bar-fill');
-        const likeScoreSpan = document.getElementById('like-score');
-        const giftScoreSpan = document.getElementById('gift-score');
-        const fullscreenOverlay = document.getElementById('fullscreen-overlay');
-        const fullscreenImage = document.getElementById('fullscreen-effect-image');
-        const fullscreenUserInfo = document.getElementById('fullscreen-user-info');
-        const winnerOverlay = document.getElementById('winner-overlay');
-        const winnerText = document.getElementById('winner-text');
-
-        ws.onopen = () => console.log('Koneksi WebSocket berhasil dibuat.');
+        ws.onopen = () => {
+            console.log('WebSocket connection established.');
+        };
 
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            
-            // --- Switch Diperbarui untuk Menangani Pesan Baru ---
+            console.log('Message from server:', data);
+
             switch (data.type) {
-                case 'leaderboard-update':
-                    updateLeaderboard(data.leaderboard);
-                    break;
-                case 'tug-of-war-update':
-                    updateTugOfWar(data.gameState);
-                    break;
-                case 'fullscreen-effect':
-                    showFullscreenEffect(data);
-                    break;
-                case 'tug-of-war-win':
-                    showWinnerAnnouncement(data.winner);
-                    break;
                 case 'floating-photo':
                     showFloatingPhoto(data.profilePictureUrl, data.userName);
                     break;
                 case 'big-photo':
                     showBigPhoto(data.profilePictureUrl, data.userName);
                     break;
+                case 'roomUser':
+                    console.log('Viewer Count:', data.viewerCount);
+                    break;
                 case 'play-sound':
                     playSound(data.sound);
                     break;
-                case 'stop-sound':
-                    stopPlayingSound();
-                    break;
+                default:
+                    console.log('Unknown message type:', data.type);
             }
         };
 
-        // --- FUNGSI BARU UNTUK FITUR BARU ---
-        function updateLeaderboard(leaderboard) {
-            leaderboardEntriesDiv.innerHTML = '';
-            leaderboard.forEach(user => {
-                const entry = document.createElement('div');
-                entry.classList.add('leaderboard-entry');
-                entry.innerHTML = `
-                    <img src="${user.profilePictureUrl}" alt="${user.username}">
-                    <span class="name">${user.username}</span>
-                    <span class="score">${user.giftValue.toLocaleString()}💎</span>
-                `;
-                leaderboardEntriesDiv.appendChild(entry);
-            });
-        }
-
-        function updateTugOfWar(gameState) {
-            towBarFill.style.width = `${gameState.position}%`;
-            likeScoreSpan.textContent = `❤️ ${gameState.teamLikeScore.toLocaleString()}`;
-            giftScoreSpan.textContent = `🌹 ${gameState.teamGiftScore.toLocaleString()}`;
-        }
-
-        function showFullscreenEffect(data) {
-            fullscreenImage.src = `effects/${data.effect}.gif`; 
-            fullscreenUserInfo.innerHTML = `Terima Kasih!<br>${data.userName}`;
-            fullscreenOverlay.style.display = 'flex';
-            setTimeout(() => {
-                fullscreenOverlay.style.display = 'none';
-            }, 8000);
-        }
-
-        function showWinnerAnnouncement(winner) {
-            const winnerMessage = winner === 'like' ? '🏆 TIM LIKE MENANG! 🏆' : '🏆 TIM GIFT MENANG! 🏆';
-            winnerText.textContent = winnerMessage;
-            winnerOverlay.style.display = 'flex';
-            setTimeout(() => {
-                winnerOverlay.style.display = 'none';
-            }, 5000);
-        }
-
-        // --- FUNGSI LAMA (TIDAK DIUBAH) ---
         function showFloatingPhoto(pictureUrl, userName) {
             const floatingImage = document.createElement('img');
             floatingImage.src = pictureUrl;
             floatingImage.alt = userName;
             floatingImage.classList.add('floating-photo');
             document.body.appendChild(floatingImage);
+
             function positionImageRandomly() {
-                const x = Math.random() * (window.innerWidth - 80);
-                const y = Math.random() * (window.innerHeight - 80);
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                const imageSize = 80;
+
+                const x = Math.random() * (viewportWidth - imageSize);
+                const y = Math.random() * (viewportHeight - imageSize);
+
                 floatingImage.style.transform = `translate(${x}px, ${y}px)`;
             }
+
+            function animateImage() {
+                setInterval(() => {
+                    positionImageRandomly();
+                }, 500);
+            }
+
             positionImageRandomly();
-            const animationInterval = setInterval(positionImageRandomly, 5000);
+            animateImage();
+
             setTimeout(() => {
-                clearInterval(animationInterval);
-                floatingImage.style.opacity = '0';
-                setTimeout(() => floatingImage.remove(), 1000);
+                floatingImage.style.opacity = 0;
+                setTimeout(() => {
+                    floatingImage.remove();
+                }, 1000);
             }, 30000);
         }
 
@@ -345,33 +241,60 @@
             bigPhotoDiv.classList.add('big-photo');
             bigPhotoDiv.style.backgroundImage = `url(${pictureUrl})`;
             document.body.appendChild(bigPhotoDiv);
-            setTimeout(() => bigPhotoDiv.classList.add('show'), 100);
+
+            bigPhotoDiv.style.position = 'fixed';
+            bigPhotoDiv.style.top = '50%';
+            bigPhotoDiv.style.left = '50%';
+            bigPhotoDiv.style.transform = 'translate(-50%, -50%)';
+            bigPhotoDiv.style.zIndex = '9999';
+
+            setTimeout(() => {
+                bigPhotoDiv.classList.add('show');
+            }, 100);
+
             setTimeout(() => {
                 bigPhotoDiv.classList.remove('show');
-                setTimeout(() => bigPhotoDiv.remove(), 500);
-            }, 10000);
+                setTimeout(() => {
+                    bigPhotoDiv.remove();
+                }, 1000);
+            }, 30000);
         }
 
         function playSound(soundPath) {
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio.currentTime = 0;
+            if (isPlaying) {
+                currentAudio.pause();  // Stop the current audio
+                currentAudio = null;   // Clear the current audio element
+                isPlaying = false;    // Update status
             }
+
             currentAudio = new Audio(soundPath);
-            currentAudio.play().catch(error => console.error("Gagal memutar suara:", error));
+            currentAudio.play();
+            isPlaying = true;
+
+            currentAudio.onended = () => {
+                isPlaying = false;
+                currentAudio = null;
+            };
         }
 
         function stopPlayingSound() {
-            if (currentAudio) {
+            if (isPlaying && currentAudio) {
                 currentAudio.pause();
-                currentAudio.currentTime = 0;
                 currentAudio = null;
+                isPlaying = false;
             }
         }
 
-        // --- Event Listeners UI (Tidak Diubah) ---
-        document.getElementById('settingsButton').addEventListener('click', () => { document.getElementById('settingsPopup').style.display = 'block'; document.getElementById('overlay').style.display = 'block'; });
-        document.getElementById('closeButton').addEventListener('click', () => { document.getElementById('settingsPopup').style.display = 'none'; document.getElementById('overlay').style.display = 'none'; });
+        document.getElementById('settingsButton').addEventListener('click', () => {
+            document.getElementById('settingsPopup').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        });
+
+        document.getElementById('closeButton').addEventListener('click', () => {
+            document.getElementById('settingsPopup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        });
+
         document.getElementById('connectButton').addEventListener('click', () => {
             const username = document.getElementById('usernameInput').value;
             if (username) {
@@ -379,17 +302,29 @@
                 document.getElementById('settingsPopup').style.display = 'none';
                 document.getElementById('overlay').style.display = 'none';
             } else {
-                alert('Silakan masukkan username TikTok.');
+                alert('Please enter a username.');
             }
         });
+
+        // Background change logic
         const enableBackground = document.getElementById('enableBackground');
         const backgroundSelect = document.getElementById('backgroundSelect');
-        function updateBackground() {
-            if (enableBackground.checked) { document.body.style.backgroundImage = `url(${backgroundSelect.value})`; } else { document.body.style.backgroundImage = 'none'; }
-        }
-        enableBackground.addEventListener('change', updateBackground);
-        backgroundSelect.addEventListener('change', updateBackground);
-        updateBackground();
+
+        enableBackground.addEventListener('change', () => {
+            if (enableBackground.checked) {
+                const selectedBackground = backgroundSelect.value;
+                document.body.style.backgroundImage = `url(${selectedBackground})`;
+            } else {
+                document.body.style.backgroundImage = 'none';
+            }
+        });
+
+        backgroundSelect.addEventListener('change', () => {
+            if (enableBackground.checked) {
+                const selectedBackground = backgroundSelect.value;
+                document.body.style.backgroundImage = `url(${selectedBackground})`;
+            }
+        });
     </script>
 </body>
 </html>
