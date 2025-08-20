@@ -9,281 +9,332 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// Data sesi pengguna
-let userLikes = {}; // Menyimpan jumlah likes per pengguna
-let userGifts = {}; // Menyimpan jumlah gifts per pengguna
-let userShares = {}; // Menyimpan jumlah shares per pengguna
-let userProfiles = {}; // Menyimpan data profil pengguna
+// --- Fitur Baru: Papan Peringkat Sesi ---
+let sessionStats = {}; // Menyimpan statistik (likes, gift, share) untuk papan peringkat
 
-// Array gambar yang akan ditampilkan untuk like
-const profilePictures = [
-    'public/images/image1.jpg', // Gambar untuk 1 like
-    'public/images/image2.jpg', // Gambar untuk 2 likes
-    'public/images/image3.jpg', // Gambar untuk 3 likes
-    // Tambahkan lebih banyak gambar sesuai kebutuhan
-];
+// --- Fitur Baru: Antrian Suara ---
+let soundQueue = []; // Antrian untuk memutar suara satu per satu
+let isSoundPlaying = false; // Status untuk memeriksa apakah ada suara yang sedang diputar
+let currentSoundTimeout = null; // Menyimpan timeout suara yang sedang berjalan
 
-// Variabel untuk menentukan apakah suara sedang diputar
-let isPlaying = false;
-let currentSoundTimeout = null; // Variable to hold the current sound timeout
+// --- Fitur Baru: Tarik Tambang ---
+const TUG_OF_WAR_GIFT_ID = 5655; // ID untuk gift Mawar (Rose). Anda bisa menggantinya.
+let tugOfWar = {
+    position: 50, // Posisi awal di tengah (0=Like menang, 100=Gift menang)
+    teamLikeScore: 0,
+    teamGiftScore: 0
+};
 
-// Fungsi untuk mengupdate jumlah likes per pengguna
-function updateUserLikes(username, likeCount) {
-    userLikes[username] = (userLikes[username] || 0) + likeCount;
+// --- Fitur Baru: Gift Mahal (DIPERBARUI) ---
+const EXPENSIVE_GIFT_IDS = {
+    '5583': 'money_gun',        // Money Gun
+    '29588': 'whale',           // Whale
+    '29658': 'lion',            // Lion (Sudah ada)
+    '29851': 'sports_car',      // Sports Car
+    '30136': 'tiktok_universe', // TikTok Universe (Sudah ada)
+    // Tambahkan ID gift mahal lainnya di sini dengan format 'giftId': 'namaEfek'
+};
 
-    // Tentukan gambar yang akan ditampilkan berdasarkan jumlah like
-    let pictureIndex = Math.min(userLikes[username] - 1, profilePictures.length - 1);
-    const profilePictureUrl = profilePictures[pictureIndex];
 
-    // Kirimkan update gambar profil dan jumlah like ke klien
+// =============================================================================
+// FUNGSI-FUNGSI UTAMA (TELAH DIPERBARUI)
+// =============================================================================
+
+/**
+ * FITUR BARU: Menambahkan suara ke antrian dan memprosesnya.
+ * Menggantikan fungsi playSound() yang lama.
+ * @param {string} soundPath Path ke file suara.
+ */
+function addToSoundQueue(soundPath) {
+    soundQueue.push(soundPath);
+    if (!isSoundPlaying) {
+        processSoundQueue();
+    }
+}
+
+/**
+ * FITUR BARU: Memproses suara dari antrian satu per satu.
+ */
+function processSoundQueue() {
+    if (isSoundPlaying || soundQueue.length === 0) {
+        return; // Jangan lakukan apa-apa jika suara sedang diputar atau antrian kosong
+    }
+
+    isSoundPlaying = true;
+    const soundPath = soundQueue.shift(); // Ambil suara pertama dari antrian
+
+    // Kirim perintah putar suara ke semua klien
     wss.clients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({
-                type: 'updateProfilePicture',
-                username: username,
-                pictureUrl: profilePictureUrl,
-                likes: userLikes[username],
-                gifts: userGifts[username] || 0,
-                shares: userShares[username] || 0
-            }));
+            client.send(JSON.stringify({ type: 'play-sound', sound: soundPath }));
+        }
+    });
+
+    // Asumsi durasi suara 5 detik. Setelah selesai, proses antrian berikutnya.
+    // Untuk hasil terbaik, sesuaikan durasi ini dengan panjang file audio Anda.
+    currentSoundTimeout = setTimeout(() => {
+        isSoundPlaying = false;
+        processSoundQueue(); // Coba proses suara berikutnya di antrian
+    }, 5000);
+}
+
+/**
+ * DIPERBARUI: Menghentikan suara yang sedang diputar dan membersihkan antrian.
+ */
+function stopPlayingSound() {
+    if (isSoundPlaying) {
+        clearTimeout(currentSoundTimeout);
+        isSoundPlaying = false;
+        currentSoundTimeout = null;
+    }
+    soundQueue = []; // Kosongkan seluruh antrian suara
+
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({ type: 'stop-sound' }));
+        }
+    });
+    console.log('Pemutaran suara dihentikan dan antrian dibersihkan.');
+}
+
+// Fungsi untuk menampilkan foto melayang (tidak berubah)
+function displayFloatingPhoto(profilePictureUrl, userName) {
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({ type: 'floating-photo', profilePictureUrl, userName }));
         }
     });
 }
 
-// Fungsi untuk memperbarui tampilan foto profil pengguna
-function updateProfilePicture(username) {
-    const profileInfo = {
-        username: username,
-        likes: userLikes[username] || 0,
-        gifts: userGifts[username] || 0,
-        shares: userShares[username] || 0
+// Fungsi untuk menampilkan foto besar (tidak berubah)
+function showBigPhoto(profilePictureUrl, userName) {
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({ type: 'big-photo', profilePictureUrl, userName }));
+        }
+    });
+}
+
+/**
+ * FITUR BARU: Mengirim update Papan Peringkat ke semua klien.
+ */
+function updateAndBroadcastLeaderboard() {
+    // Urutkan pengguna berdasarkan nilai gift tertinggi
+    const sortedStats = Object.entries(sessionStats)
+        .sort(([, a], [, b]) => b.giftValue - a.giftValue)
+        .slice(0, 5) // Ambil 5 teratas
+        .map(([username, stats]) => ({ username, ...stats }));
+
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({ type: 'leaderboard-update', leaderboard: sortedStats }));
+        }
+    });
+}
+
+/**
+ * FITUR BARU: Mengirim status game Tarik Tambang ke semua klien.
+ */
+function broadcastTugOfWarState() {
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({ type: 'tug-of-war-update', gameState: tugOfWar }));
+        }
+    });
+}
+
+// =============================================================================
+// EVENT HANDLERS (TELAH DIPERBARUI DENGAN FITUR BARU)
+// =============================================================================
+
+function handleMemberJoin(data) {
+    console.log(`${data.uniqueId} bergabung!`);
+    displayFloatingPhoto(data.profilePictureUrl, data.uniqueId);
+    addToSoundQueue('sounds/hallo.mp3');
+}
+
+function handleGift(data) {
+    if (data.giftType === 1 && !data.repeatEnd) {
+        // Streak sedang berlangsung, abaikan sementara
+        return;
+    }
+    
+    console.log(`${data.uniqueId} telah mengirim gift ${data.giftName} x${data.repeatCount}`);
+    showBigPhoto(data.profilePictureUrl, data.uniqueId);
+    addToSoundQueue('sounds/winner.mp3');
+
+    const user = data.uniqueId;
+    const giftValue = data.diamondCount * data.repeatCount;
+
+    // --- LOGIKA PAPAN PERINGKAT ---
+    if (!sessionStats[user]) {
+        sessionStats[user] = { likes: 0, giftValue: 0, shares: 0, profilePictureUrl: data.profilePictureUrl };
+    }
+    sessionStats[user].giftValue += giftValue;
+    sessionStats[user].profilePictureUrl = data.profilePictureUrl; // Selalu update foto profil terbaru
+
+    // --- LOGIKA TARIK TAMBANG ---
+    if (String(data.giftId) === String(TUG_OF_WAR_GIFT_ID)) {
+        tugOfWar.position += 1 * data.repeatCount;
+        tugOfWar.teamGiftScore += data.repeatCount;
+        if (tugOfWar.position >= 100) {
+            tugOfWar.position = 100;
+            // Kirim event kemenangan Tim Gift dan reset
+            wss.clients.forEach(c => c.send(JSON.stringify({type: 'tug-of-war-win', winner: 'gift'})));
+            tugOfWar = { position: 50, teamLikeScore: 0, teamGiftScore: 0 };
+        }
+    }
+
+    // --- LOGIKA GIFT MAHAL ---
+    const effect = EXPENSIVE_GIFT_IDS[String(data.giftId)];
+    if (effect) {
+        wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({
+                    type: 'fullscreen-effect',
+                    effect: effect,
+                    userName: data.uniqueId,
+                    profilePictureUrl: data.profilePictureUrl
+                }));
+            }
+        });
+    }
+}
+
+function handleLike(data) {
+    console.log(`${data.uniqueId} mengirim ${data.likeCount} like`);
+    displayFloatingPhoto(data.profilePictureUrl, data.uniqueId);
+
+    const user = data.uniqueId;
+
+    // --- LOGIKA PAPAN PERINGKAT ---
+    if (!sessionStats[user]) {
+        sessionStats[user] = { likes: 0, giftValue: 0, shares: 0, profilePictureUrl: data.profilePictureUrl };
+    }
+    sessionStats[user].likes += data.likeCount;
+    sessionStats[user].profilePictureUrl = data.profilePictureUrl;
+
+    // --- LOGIKA TARIK TAMBANG ---
+    // Kurangi 0.05 poin per like agar lebih seimbang
+    tugOfWar.position -= 0.05 * data.likeCount;
+    tugOfWar.teamLikeScore += data.likeCount;
+    if (tugOfWar.position <= 0) {
+        tugOfWar.position = 0;
+        // Kirim event kemenangan Tim Like dan reset
+        wss.clients.forEach(c => c.send(JSON.stringify({type: 'tug-of-war-win', winner: 'like'})));
+        tugOfWar = { position: 50, teamLikeScore: 0, teamGiftScore: 0 };
+    }
+}
+
+function handleShare(data) {
+    console.log(`${data.uniqueId} membagikan stream!`);
+    displayFloatingPhoto(data.profilePictureUrl, data.uniqueId);
+    addToSoundQueue('sounds/kentut.mp3');
+
+    const user = data.uniqueId;
+
+    // --- LOGIKA PAPAN PERINGKAT ---
+    if (!sessionStats[user]) {
+        sessionStats[user] = { likes: 0, giftValue: 0, shares: 0, profilePictureUrl: data.profilePictureUrl };
+    }
+    sessionStats[user].shares += 1; // Setiap share dihitung 1
+    sessionStats[user].profilePictureUrl = data.profilePictureUrl;
+}
+
+function handleEnvelope(data) {
+    console.log('Envelope diterima:', data);
+    addToSoundQueue('sounds/anjay.mp3');
+}
+
+function handleChat(data) {
+    console.log(`${data.uniqueId} menulis: ${data.comment}`);
+    
+    // Kirim chat ke semua klien (agar bisa ditampilkan di layar jika diinginkan)
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({ type: 'chat', userName: data.uniqueId, comment: data.comment }));
+        }
+    });
+
+    const soundMapping = {
+        '1': 'sounds/1.mp3', '2': 'sounds/2.mp3', '3': 'sounds/3.mp3', '4': 'sounds/4.mp3', 
+        '5': 'sounds/ahh.mp3', '6': 'sounds/6.mp3', '7': 'sounds/7.mp3', '8': 'sounds/8.mp3', 
+        '9': 'sounds/9.mp3', '10': 'sounds/10.mp3', '11': 'sounds/11.mp3', '12': 'sounds/12.mp3', 
+        '13': 'sounds/13.mp3', '14': 'sounds/14.mp3', '15': 'sounds/15.mp3', '16': 'sounds/16.mp3', 
+        '17': 'sounds/17.mp3', '18': 'sounds/18.mp3', '19': 'sounds/19.mp3', '20': 'sounds/20.mp3', 
+        'm': 'sounds/1.mp3', 'assalamualaikum': 'sounds/salam.mp3', 'halo': 'sounds/hallo.mp3'
     };
 
-    wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({
-                type: 'updateProfilePicture',
-                ...profileInfo
-            }));
-        }
-    });
+    const soundFile = soundMapping[data.comment.trim().toLowerCase()];
+    if (soundFile) {
+        addToSoundQueue(soundFile);
+    }
+
+    if (data.comment.trim().toLowerCase() === 'ganti') {
+        stopPlayingSound();
+    }
 }
 
-// Serve static files from the 'public' directory
+// Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Variable to hold TikTok username
 let tiktokLiveConnection;
-
-// Function to play sound on client
-function playSound(ws, soundPath) {
-    if (!isPlaying) {
-        isPlaying = true;
-        ws.send(JSON.stringify({
-            type: 'play-sound',
-            sound: soundPath
-        }));
-
-        // Simulasi durasi suara (misalnya, 5 detik)
-        currentSoundTimeout = setTimeout(() => {
-            isPlaying = false;
-            currentSoundTimeout = null;
-        }, 5000); // Sesuaikan dengan durasi suara sesungguhnya
-    } else {
-        console.log('A sound is already playing, skipping this sound.');
-    }
-}
-
-// Function to stop playing sound
-function stopPlayingSound(ws) {
-    if (isPlaying) {
-        clearTimeout(currentSoundTimeout);
-        isPlaying = false;
-        currentSoundTimeout = null;
-        ws.send(JSON.stringify({
-            type: 'stop-sound'
-        }));
-        console.log('Sound playback stopped.');
-    }
-}
-
-// Function to display floating photo
-function displayFloatingPhoto(ws, profilePictureUrl, userName) {
-    ws.send(JSON.stringify({
-        type: 'floating-photo',
-        profilePictureUrl: profilePictureUrl,
-        userName: userName
-    }));
-}
-
-// Function to show big photo
-function showBigPhoto(ws, profilePictureUrl, userName) {
-    ws.send(JSON.stringify({
-        type: 'big-photo',
-        profilePictureUrl: profilePictureUrl,
-        userName: userName
-    }));
-}
-
-// Function to handle member join
-function handleMemberJoin(ws, data) {
-    console.log(`${data.uniqueId} joined the stream!`);
-    displayFloatingPhoto(ws, data.profilePictureUrl, data.uniqueId);
-    playSound(ws, 'sounds/hallo.mp3');
-}
-
-// Function to handle gift
-function handleGift(ws, data) {
-    if (data.giftType === 1 && !data.repeatEnd) {
-        // Streak in progress => show only temporary
-        console.log(`${data.uniqueId} is sending gift ${data.giftName} x${data.repeatCount}`);
-    } else {
-        // Streak ended or non-streakable gift => process the gift with final repeat_count
-        console.log(`${data.uniqueId} has sent gift ${data.giftName} x${data.repeatCount}`);
-        showBigPhoto(ws, data.profilePictureUrl, data.uniqueId);
-        playSound(ws, 'sounds/winner.mp3');
-    }
-}
-
-// Function to handle like
-function handleLike(ws, data) {
-    console.log(`${data.uniqueId} sent ${data.likeCount} likes`);
-    for (let i = 0; i < data.likeCount; i++) {
-        setTimeout(() => {
-            displayFloatingPhoto(ws, data.profilePictureUrl, data.uniqueId);
-        }, i * 1000); // Delay each like
-    }
-}
-
-// Function to handle share
-function handleShare(ws, data) {
-    console.log(`${data.uniqueId} shared the stream!`);
-    displayFloatingPhoto(ws, data.profilePictureUrl, data.uniqueId);
-    playSound(ws, 'sounds/kentut.mp3');
-}
-
-// Function to handle envelope
-function handleEnvelope(ws, data) {
-    console.log('Envelope received:', data);
-    playSound(ws, 'sounds/anjay.mp3');
-}
-
-// Function to handle chat comments
-function handleChat(ws, data) {
-    console.log(`${data.uniqueId} (userId:${data.userId}) writes: ${data.comment}`);
-    ws.send(JSON.stringify({
-        type: 'chat',
-        userName: data.uniqueId,
-        comment: data.comment
-    }));
-
-    // Pemetaan komentar ke file suara
-    const soundMapping = {
-        '1': 'sounds/1.mp3',
-        '2': 'sounds/2.mp3',
-        '3': 'sounds/3.mp3',
-        '4': 'sounds/4.mp3',
-        '5': 'sounds/ahh.mp3',
-        '6': 'sounds/6.mp3',
-        '7': 'sounds/7.mp3',
-        '8': 'sounds/8.mp3',
-        '9': 'sounds/9.mp3',
-        '10': 'sounds/10.mp3',
-        '11': 'sounds/11.mp3',
-        '12': 'sounds/12.mp3',
-        '13': 'sounds/13.mp3',
-        '14': 'sounds/14.mp3',
-        '15': 'sounds/15.mp3',
-        '16': 'sounds/16.mp3',
-        '17': 'sounds/17.mp3',
-        '18': 'sounds/18.mp3',
-        '19': 'sounds/19.mp3',
-        '20': 'sounds/20.mp3',
-        'm': 'sounds/1.mp3',
-        'assalamualaikum': 'sounds/salam.mp3',
-        'halo': 'sounds/hallo.mp3'
-    };
-
-    // Cek apakah komentar sesuai dengan salah satu kunci di soundMapping
-    const soundFile = soundMapping[data.comment.trim()];
-    if (soundFile) {
-        playSound(ws, soundFile);
-    }
-
-    // Cek apakah komentar adalah "ganti"
-    if (data.comment.trim().toLowerCase() === 'ganti') {
-        stopPlayingSound(ws);
-    }
-}
 
 // WebSocket connection handling
 wss.on('connection', (ws) => {
-    console.log('WebSocket connection established.');
+    console.log('Koneksi WebSocket berhasil dibuat.');
 
-    // Handle incoming messages from clients
+    // Kirim status awal ke pengguna yang baru terhubung
+    ws.send(JSON.stringify({ type: 'tug-of-war-update', gameState: tugOfWar }));
+    updateAndBroadcastLeaderboard(); // Kirim leaderboard saat pertama kali terhubung
+
     ws.on('message', (message) => {
         const data = JSON.parse(message);
         if (data.type === 'connect') {
             const username = data.username;
-            console.log('Connecting to TikTok with username:', username);
+            console.log('Menyambungkan ke TikTok dengan username:', username);
 
-            // If there's an existing connection, disconnect it
             if (tiktokLiveConnection) {
                 tiktokLiveConnection.disconnect();
             }
 
-            // Create a new WebcastPushConnection object with the new username
+            // Reset semua statistik saat koneksi baru dimulai
+            sessionStats = {};
+            tugOfWar = { position: 50, teamLikeScore: 0, teamGiftScore: 0 };
+            soundQueue = [];
+
             tiktokLiveConnection = new WebcastPushConnection(username);
 
             tiktokLiveConnection.connect().then(state => {
-                console.info(`Connected to roomId ${state.roomId}`);
+                console.info(`Terhubung ke roomId ${state.roomId}`);
             }).catch(err => {
-                console.error('Failed to connect', err);
+                console.error('Gagal terhubung', err);
             });
-
-            tiktokLiveConnection.on('connected', (state) => {
-                console.log('Hurray! Connected!', state);
-            });
-
-            tiktokLiveConnection.on('disconnected', () => {
-                console.log('Disconnected :(');
-            });
-
-            tiktokLiveConnection.on('streamEnd', (actionId) => {
-                console.log('Stream ended with actionId:', actionId);
-                // Handle stream end event
-            });
-
-            tiktokLiveConnection.on('member', (data) => handleMemberJoin(ws, data));
-
-            tiktokLiveConnection.on('gift', (data) => handleGift(ws, data));
-
-            tiktokLiveConnection.on('like', (data) => handleLike(ws, data));
-
-            tiktokLiveConnection.on('share', (data) => handleShare(ws, data));
-
-            tiktokLiveConnection.on('envelope', (data) => handleEnvelope(ws, data));
-
-            tiktokLiveConnection.on('chat', (data) => handleChat(ws, data));
-
-            tiktokLiveConnection.on('websocketConnected', (websocketClient) => {
-                console.log("Websocket:", websocketClient.connection);
-            });
-
-            tiktokLiveConnection.on('roomUser', (data) => {
-                console.log(`Viewer Count: ${data}`);
-            });
+            
+            tiktokLiveConnection.on('member', handleMemberJoin);
+            tiktokLiveConnection.on('gift', handleGift);
+            tiktokLiveConnection.on('like', handleLike);
+            tiktokLiveConnection.on('share', handleShare);
+            tiktokLiveConnection.on('envelope', handleEnvelope);
+            tiktokLiveConnection.on('chat', handleChat);
         }
     });
 
-    // Handle WebSocket closure
     ws.on('close', () => {
-        console.log('WebSocket connection closed.');
+        console.log('Koneksi WebSocket ditutup.');
     });
 });
 
-// Start the server on port 3000
+// Broadcast update secara berkala ke semua klien
+setInterval(() => {
+    if (tiktokLiveConnection && tiktokLiveConnection.isConnected()) {
+        updateAndBroadcastLeaderboard();
+        broadcastTugOfWarState();
+    }
+}, 5000); // Setiap 5 detik
+
+// Start server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`Server berjalan di port ${PORT}`);
 });
